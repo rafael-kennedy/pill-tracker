@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pill Tracker</title>
+<meta name="theme-color" content="#1f6f5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Pills">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <h1>Pills</h1>
+  <button id="menuBtn" class="icon-btn" aria-label="Menu" aria-haspopup="true">⋯</button>
+</header>
+
+<div id="banner" class="banner" hidden></div>
+
+<main>
+  <ul id="pillList" class="pill-list"></ul>
+  <p id="empty" class="empty" hidden>No pills yet. Add one below.</p>
+  <button id="addBtn" class="primary wide">+ Add pill</button>
+  <p id="backupStatus" class="muted center"></p>
+</main>
+
+<dialog id="pillDialog">
+  <form id="pillForm" method="dialog">
+    <h2 id="pillDialogTitle">Add pill</h2>
+    <label>Name
+      <input name="name" required autocomplete="off" maxlength="120">
+    </label>
+    <label>Instructions <span class="muted">(optional)</span>
+      <textarea name="instructions" rows="3" maxlength="1000"></textarea>
+    </label>
+    <div class="row">
+      <button type="button" id="deletePillBtn" class="danger" hidden>Delete</button>
+      <span class="spacer"></span>
+      <button type="button" id="cancelPillBtn">Cancel</button>
+      <button type="submit" class="primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="menuDialog">
+  <h2>Data</h2>
+  <p class="muted">Everything stays on this device. Export a CSV backup regularly.</p>
+  <button id="exportBtn" class="primary wide">Export CSV backup</button>
+  <button id="importBtn" class="wide">Import CSV</button>
+  <input id="importFile" type="file" accept=".csv,text/csv" hidden>
+  <p id="storageStatus" class="muted small"></p>
+  <p id="installHint" class="muted small" hidden></p>
+  <div class="row"><span class="spacer"></span><button id="closeMenuBtn">Close</button></div>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="app.js" type="module"></script>
+</body>
+</html>

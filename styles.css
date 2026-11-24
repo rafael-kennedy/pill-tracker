@@ -1,0 +1,66 @@
+:root {
+  --bg: #f6f7f5; --card: #ffffff; --text: #1b1f1d; --muted: #5d6662;
+  --accent: #1f6f5c; --accent-text: #ffffff; --border: #dfe3e0;
+  --danger: #b3261e; --warn-bg: #fff4d6; --warn-text: #6b4e00;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121514; --card: #1c201e; --text: #e8ebe9; --muted: #9aa49f;
+    --accent: #4fb59a; --accent-text: #08120f; --border: #2d3330;
+    --danger: #f2877f; --warn-bg: #3a3017; --warn-text: #f3dc9b;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%; }
+body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+main { max-width: 640px; margin: 0 auto; padding: 0 16px 32px; }
+.top { max-width: 640px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
+h1 { font-size: 28px; margin: 0; }
+h2 { font-size: 20px; margin: 0 0 12px; }
+button { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 16px; cursor: pointer; min-height: 44px; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+button.danger { color: var(--danger); }
+button.wide { width: 100%; margin-top: 12px; }
+.icon-btn { font-size: 24px; line-height: 1; padding: 6px 14px; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+.center { text-align: center; }
+.empty { text-align: center; color: var(--muted); padding: 32px 0 8px; }
+.banner { max-width: 608px; margin: 0 auto 12px; background: var(--warn-bg); color: var(--warn-text);
+  border-radius: 12px; padding: 10px 14px; font-size: 15px; }
+.pill-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.pill { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; }
+.pill-head { display: flex; gap: 12px; align-items: center; }
+.pill-info { flex: 1; min-width: 0; }
+.pill-name { font-weight: 600; font-size: 18px; overflow-wrap: anywhere; background: none; border: 0;
+  padding: 0; min-height: 0; text-align: left; cursor: pointer; }
+.pill-ago { color: var(--muted); font-size: 15px; }
+.pill-ago.fresh { color: var(--accent); font-weight: 600; }
+.pill-instr { color: var(--muted); font-size: 15px; margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.take-btn { flex: none; min-width: 96px; }
+details { margin-top: 8px; font-size: 15px; }
+summary { color: var(--muted); cursor: pointer; }
+.history { list-style: none; padding: 0; margin: 6px 0 0; }
+.history li { display: flex; justify-content: space-between; align-items: center; padding: 4px 0;
+  border-top: 1px solid var(--border); }
+.history button { min-height: 32px; padding: 2px 10px; font-size: 14px; }
+dialog { border: 1px solid var(--border); border-radius: 16px; background: var(--card); color: var(--text);
+  width: min(92vw, 480px); padding: 20px; }
+dialog::backdrop { background: rgb(0 0 0 / .4); }
+label { display: block; margin-bottom: 12px; font-weight: 600; }
+input, textarea { display: block; width: 100%; margin-top: 4px; font: inherit; font-weight: 400; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+.row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+.spacer { flex: 1; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom));
+  background: var(--text); color: var(--bg); border-radius: 12px; padding: 8px 8px 8px 16px;
+  display: flex; gap: 12px; align-items: center; max-width: calc(100vw - 32px); box-shadow: 0 4px 16px rgb(0 0 0 / .25); }
+.toast[hidden] { display: none; }
+.toast button { background: transparent; color: var(--bg); border-color: transparent; font-weight: 600; min-height: 36px; }
+[hidden] { display: none !important; }
+.banner a { color: inherit; font-weight: 600; }
+.toast span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
