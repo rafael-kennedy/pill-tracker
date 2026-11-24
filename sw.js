@@ -1,6 +1,6 @@
 // Offline-first service worker. Serves from cache, refreshes cache in the background.
 // A new deploy is picked up on the launch after the one that downloads it.
-const CACHE = 'pill-tracker-v1';
+const CACHE = 'pill-tracker-v2';
 const ASSETS = [
   './', 'index.html', 'styles.css', 'app.js', 'db.js', 'csv.js', 'time.js',
   'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',

@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pill Tracker</title>
-<meta name="theme-color" content="#1f6f5c">
+<meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0d0d" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -17,16 +18,24 @@
 <body>
 <header class="top">
   <h1>Pills</h1>
-  <button id="menuBtn" class="icon-btn" aria-label="Menu" aria-haspopup="true">⋯</button>
+  <div class="actions">
+    <button id="addBtn" class="icon-btn" aria-label="Add pill">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button id="menuBtn" class="icon-btn" aria-label="Backup and settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+    </button>
+  </div>
 </header>
 
-<div id="banner" class="banner" hidden></div>
-
 <main>
+  <p id="banner" class="banner" hidden></p>
   <ul id="pillList" class="pill-list"></ul>
-  <p id="empty" class="empty" hidden>No pills yet. Add one below.</p>
-  <button id="addBtn" class="primary wide">+ Add pill</button>
-  <p id="backupStatus" class="muted center"></p>
+  <div id="empty" class="empty" hidden>
+    <p>No pills yet.</p>
+    <button id="emptyAddBtn" class="text-btn">Add a pill</button>
+  </div>
+  <p id="backupStatus" class="footnote"></p>
 </main>
 
 <dialog id="pillDialog">
@@ -39,9 +48,9 @@
       <textarea name="instructions" rows="3" maxlength="1000"></textarea>
     </label>
     <div class="row">
-      <button type="button" id="deletePillBtn" class="danger" hidden>Delete</button>
+      <button type="button" id="deletePillBtn" class="text-btn danger" hidden>Delete</button>
       <span class="spacer"></span>
-      <button type="button" id="cancelPillBtn">Cancel</button>
+      <button type="button" id="cancelPillBtn" class="text-btn">Cancel</button>
       <button type="submit" class="primary">Save</button>
     </div>
   </form>
@@ -51,11 +60,11 @@
   <h2>Data</h2>
   <p class="muted">Everything stays on this device. Export a CSV backup regularly.</p>
   <button id="exportBtn" class="primary wide">Export CSV backup</button>
-  <button id="importBtn" class="wide">Import CSV</button>
+  <button id="importBtn" class="wide quiet">Import CSV</button>
   <input id="importFile" type="file" accept=".csv,text/csv" hidden>
   <p id="storageStatus" class="muted small"></p>
   <p id="installHint" class="muted small" hidden></p>
-  <div class="row"><span class="spacer"></span><button id="closeMenuBtn">Close</button></div>
+  <button id="closeMenuBtn" class="text-btn wide">Done</button>
 </dialog>
 
 <div id="toast" class="toast" hidden></div>

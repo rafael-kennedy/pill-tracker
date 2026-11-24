@@ -37,23 +37,35 @@ function el(tag, props = {}, ...kids) {
   return e;
 }
 
+const CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const expanded = new Set();
+
 function pillCard(p, now) {
   const history = lastDoses(p.id, 10);
   const last = history[0];
-  const agoText = last ? `${ago(last.takenAt, now)} · ${stamp(last.takenAt, now)}` : 'Not taken yet';
-  const fresh = last && now - last.takenAt < FRESH_MS;
+  const fresh = !!last && now - last.takenAt < FRESH_MS;
+  const open = expanded.has(p.id);
+  const check = el('button', { class: 'check' + (fresh ? ' fresh' : ''), onclick: () => take(p), 'aria-label': `Took ${p.name}` });
+  check.innerHTML = CHECK;
   return el('li', { class: 'pill', 'data-id': p.id },
-    el('div', { class: 'pill-head' },
-      el('div', { class: 'pill-info' },
-        el('button', { class: 'pill-name', onclick: () => openPillDialog(p), 'aria-label': `Edit ${p.name}` }, p.name),
-        el('div', { class: 'pill-ago' + (fresh ? ' fresh' : ''), 'data-taken': last ? last.takenAt : '' }, agoText)),
-      el('button', { class: 'primary take-btn', onclick: () => take(p) }, 'Took it')),
-    p.instructions ? el('p', { class: 'pill-instr' }, p.instructions) : null,
-    history.length ? el('details', {},
-      el('summary', {}, 'History'),
-      el('ul', { class: 'history' }, ...history.map((d) =>
+    el('div', { class: 'pill-row' },
+      el('button', { class: 'pill-info', 'aria-expanded': String(open), onclick: () => toggle(p.id) },
+        el('span', { class: 'pill-name' }, p.name),
+        el('span', { class: 'pill-ago' + (fresh ? ' fresh' : ''), 'data-taken': last ? last.takenAt : '' },
+          last ? ago(last.takenAt, now) : 'Not taken yet')),
+      check),
+    open ? el('div', { class: 'detail' },
+      p.instructions ? el('p', { class: 'pill-instr' }, p.instructions) : null,
+      history.length ? el('p', { class: 'label' }, 'Recent') : null,
+      history.length ? el('ul', { class: 'history' }, ...history.map((d) =>
         el('li', {}, el('span', {}, stamp(d.takenAt, now)),
-          el('button', { onclick: () => removeDose(d), 'aria-label': 'Remove this entry' }, 'Remove'))))) : null);
+          el('button', { class: 'x-btn', onclick: () => removeDose(d), 'aria-label': 'Remove this entry' }, '×')))) : null,
+      el('button', { class: 'text-btn', onclick: () => openPillDialog(p) }, 'Edit')) : null);
+}
+
+function toggle(id) {
+  expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+  render();
 }
 
 async function take(p) {
@@ -75,14 +87,16 @@ async function removeDose(d) {
   toast('Entry removed', 'Undo', async () => { await db.putDose(d); state.doses.push(d); render(); });
 }
 
-// Refresh relative times every 30s without rebuilding the DOM (keeps <details> open).
+// Refresh relative times every 30s without rebuilding the DOM.
 function tick() {
   const now = Date.now();
   for (const n of document.querySelectorAll('.pill-ago[data-taken]')) {
     const t = Number(n.dataset.taken);
     if (!t) continue;
-    n.textContent = `${ago(t, now)} · ${stamp(t, now)}`;
-    n.classList.toggle('fresh', now - t < FRESH_MS);
+    n.textContent = ago(t, now);
+    const fresh = now - t < FRESH_MS;
+    n.classList.toggle('fresh', fresh);
+    n.closest('.pill').querySelector('.check').classList.toggle('fresh', fresh);
   }
 }
 
@@ -95,10 +109,11 @@ function openPillDialog(p) {
   $('#pillDialogTitle').textContent = p ? 'Edit pill' : 'Add pill';
   $('#deletePillBtn').hidden = !p;
   $('#pillDialog').showModal();
-  if (!p) f.name.focus();
+  if (!p) f.name.focus(); else document.activeElement.blur();
 }
 
 $('#addBtn').addEventListener('click', () => openPillDialog(null));
+$('#emptyAddBtn').addEventListener('click', () => openPillDialog(null));
 $('#cancelPillBtn').addEventListener('click', () => $('#pillDialog').close());
 $('#pillForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -130,13 +145,13 @@ async function renderBackupStatus() {
   const status = $('#backupStatus');
   const banner = $('#banner');
   const hasData = state.pills.length > 0;
-  status.textContent = last ? `Last backup ${ago(last)}` : hasData ? 'Not backed up yet' : '';
+  status.textContent = last ? `Backed up ${ago(last)}` : '';
   const stale = hasData && (!last || Date.now() - last > BACKUP_NAG_DAYS * 864e5);
   banner.hidden = !stale;
   if (stale) {
     banner.replaceChildren(
-      last ? `Last CSV backup was ${ago(last)}. ` : 'No CSV backup yet. ',
-      el('a', { href: '#', onclick: (e) => { e.preventDefault(); exportCSV(); } }, 'Back up now'));
+      last ? `Last backup ${ago(last)}. ` : 'Not backed up yet. ',
+      el('a', { href: '#', onclick: (e) => { e.preventDefault(); exportCSV(); } }, 'Back up'));
   }
 }
 
