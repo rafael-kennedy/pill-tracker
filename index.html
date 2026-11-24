@@ -29,6 +29,8 @@
 </header>
 
 <main>
+  <p id="hint" class="hint">Hold to log</p>
+  <div id="install" class="install" hidden></div>
   <p id="banner" class="banner" hidden></p>
   <ul id="pillList" class="pill-list"></ul>
   <div id="empty" class="empty" hidden>
@@ -37,6 +39,17 @@
   </div>
   <p id="backupStatus" class="footnote"></p>
 </main>
+
+<div class="bar" id="bar">
+  <div class="bar-inner">
+    <span class="mouth-slot" id="slot"><svg class="mouth" id="mouth" viewBox="0 0 120 64" aria-hidden="true">
+      <defs><clipPath id="mclip"><path id="clipPath"/></clipPath></defs>
+      <path class="lips" id="lips"/>
+      <ellipse class="tongue" id="tongue" cx="60" cy="52" rx="24" ry="12" clip-path="url(#mclip)"/>
+      <path class="lips" id="lipsLine" fill="none"/>
+    </svg></span>
+  </div>
+</div>
 
 <dialog id="pillDialog">
   <form id="pillForm" method="dialog">

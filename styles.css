@@ -1,13 +1,13 @@
 :root {
   --bg: #fafaf9; --surface: #ffffff; --text: #111312; --muted: #8a8f8c; --faint: #c9cdca;
-  --line: #ececea; --accent: #1f7a62; --on-accent: #ffffff; --danger: #c0392b; --warn: #a86b00;
+  --line: #ececea; --accent: #1f7a62; --accent-2: #d9efe7; --inside: #3a1d1d; --tongue: #d97a7a; --on-accent: #ffffff; --danger: #c0392b; --warn: #a86b00;
   --radius: 14px;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0c0d0d; --surface: #161818; --text: #eceeed; --muted: #7d8482; --faint: #3a3f3d;
-    --line: #1f2221; --accent: #5cc8a6; --on-accent: #06140f; --danger: #ff7b6e; --warn: #e0b45a;
+    --line: #1f2221; --accent: #5cc8a6; --accent-2: #1d3a31; --inside: #2a1212; --tongue: #b85b5b; --on-accent: #06140f; --danger: #ff7b6e; --warn: #e0b45a;
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -17,7 +17,7 @@ html, body { margin: 0; background: var(--bg); color: var(--text);
   -webkit-text-size-adjust: 100%; font-variant-numeric: tabular-nums; }
 body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 main, .top { max-width: 560px; margin: 0 auto; }
-main { padding: 0 20px 40px; }
+main { padding: 0 20px calc(120px + env(safe-area-inset-bottom)); }
 
 .top { display: flex; align-items: center; justify-content: space-between; padding: 20px 12px 8px 20px; }
 h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.025em; margin: 0; }
@@ -47,17 +47,61 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 /* List */
 .pill-list { list-style: none; margin: 0; padding: 0; }
 .pill { border-bottom: 1px solid var(--line); }
-.pill-row { display: flex; align-items: center; gap: 16px; padding: 16px 0; }
+.pill-row { display: flex; align-items: center; gap: 16px; padding: 14px 0; }
 .pill-info { flex: 1; min-width: 0; text-align: left; padding: 2px 0; }
 .pill-name { display: block; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .pill-ago { display: block; margin-top: 2px; font-size: 15px; color: var(--muted); }
 .pill-ago.fresh { color: var(--accent); }
 
-.check { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center;
-  border: 1.75px solid var(--faint); color: var(--faint); transition: background .2s, border-color .2s, color .2s, transform .12s; }
-.check svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; }
-.check:active { transform: scale(.92); }
-.check.fresh { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.hint { margin: 0 0 6px; font-size: 15px; font-weight: 500; color: var(--muted); }
+.pill-ago.just { color: var(--accent); }
+
+/* Row: the whole row is the hold target. The sweep is the hold's progress. */
+.pill-row { position: relative; cursor: pointer; touch-action: pan-y; outline: none;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.pill-row:focus-visible { box-shadow: 0 0 0 2px var(--accent); border-radius: 8px; }
+.pill-row > :not(.sweep) { position: relative; }
+.sweep { position: absolute; inset: 0 -20px; pointer-events: none; transform-origin: left; transform: scaleX(0);
+  background: linear-gradient(90deg, transparent, var(--accent-2)); opacity: .8; }
+.sweep::after { content: ""; position: absolute; right: 0; top: 18%; bottom: 18%; width: 3px; border-radius: 2px; background: var(--accent); }
+.pill-row.holding .sweep { transform: scaleX(1); transition: transform 1s cubic-bezier(.5,0,.9,.6); }
+.pill-row.release .sweep { transform: scaleX(1); opacity: 0; transition: opacity .35s .1s; }
+
+.pill-icon { flex: none; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%;
+  border: 1.5px solid var(--faint); }
+.capsule { width: 28px; height: 28px; transform: rotate(-35deg); }
+.cap-a { fill: var(--accent); } .cap-b { fill: var(--accent-2); stroke: var(--accent); stroke-width: 1.2; }
+.pill-row.holding .pill-icon { animation: tremble .08s linear infinite; animation-delay: .7s; }
+@keyframes tremble { 50% { transform: translateX(.6px) rotate(.6deg); } }
+.pill-icon.gone .capsule { opacity: 0; }
+.pill-icon.back .capsule { animation: pop .35s cubic-bezier(.3,1.6,.5,1); }
+@keyframes pop { from { transform: rotate(-35deg) scale(0); } }
+.flyer { position: fixed; left: 0; top: 0; width: 30px; height: 30px; pointer-events: none; z-index: 30; }
+.flyer .capsule { width: 30px; height: 30px; transform: none; }
+
+/* Bottom bar with the mouth */
+.bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--surface);
+  border-top: 1px solid var(--line); padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.bar-inner { height: 76px; display: grid; place-items: center; }
+.mouth-slot { display: inline-block; will-change: transform; }
+.mouth { width: 128px; height: 68px; overflow: visible; display: block; }
+.mouth .lips { stroke: var(--text); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; fill: var(--inside); }
+.mouth .tongue { fill: var(--tongue); }
+.bar.gulp .mouth { animation: gulp .4s ease-out; }
+@keyframes gulp { 30% { transform: scale(1.08, .86); } 60% { transform: scale(.97, 1.05); } }
+
+/* Install card */
+.install { margin: 4px 0 12px; padding: 14px 16px; border-radius: var(--radius); background: var(--surface);
+  border: 1px solid var(--line); font-size: 15px; }
+.install p { margin: 0 0 4px; }
+.install .why { color: var(--muted); font-size: 14px; }
+.install .row { margin-top: 8px; }
+.install .primary { min-height: 40px; padding: 0 18px; border-radius: 999px; font-size: 15px; }
+.install .share { display: inline-block; width: 18px; height: 18px; vertical-align: -3px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pill-row.holding .pill-icon, .bar.gulp .mouth, .pill-icon.back .capsule, dialog[open], .detail { animation: none; }
+}
 
 .detail { padding: 0 0 18px; font-size: 15px; animation: reveal .18s ease-out; }
 @keyframes reveal { from { opacity: 0; transform: translateY(-4px); } }
@@ -86,7 +130,7 @@ input:focus, textarea:focus { border-color: var(--faint); }
 .spacer { flex: 1; }
 
 /* Toast */
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom));
+.toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(14px + env(safe-area-inset-top)); z-index: 25;
   background: var(--text); color: var(--bg); border-radius: 999px; padding: 6px 6px 6px 18px; font-size: 15px;
   display: flex; gap: 8px; align-items: center; max-width: calc(100vw - 40px); box-shadow: 0 6px 24px rgb(0 0 0 / .18); }
 .toast span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

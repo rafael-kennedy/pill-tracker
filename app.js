@@ -1,9 +1,9 @@
 import * as db from './db.js';
 import { toCSV, fromCSV } from './csv.js';
 import { ago, stamp } from './time.js';
+import { haptic, startRatchet, dropPill } from './swallow.js';
 
 const $ = (s) => document.querySelector(s);
-const FRESH_MS = 60 * 60e3;
 const BACKUP_NAG_DAYS = 7;
 let state = { pills: [], doses: [] };
 let editingId = null;
@@ -22,6 +22,7 @@ function render() {
   const now = Date.now();
   const pills = [...state.pills].sort((a, b) => a.createdAt - b.createdAt);
   $('#empty').hidden = pills.length > 0;
+  $('#hint').hidden = pills.length === 0;
   list.replaceChildren(...pills.map((p) => pillCard(p, now)));
   renderBackupStatus();
 }
@@ -37,30 +38,77 @@ function el(tag, props = {}, ...kids) {
   return e;
 }
 
-const CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const CAPSULE = `<svg class="capsule" viewBox="0 0 30 30" aria-hidden="true">
+  <path class="cap-b" d="M15 4.6a5.4 5.4 0 0 1 5.4 5.4V15H9.6v-5A5.4 5.4 0 0 1 15 4.6z"/>
+  <path class="cap-a" d="M9 15h12v5a6 6 0 0 1-12 0z"/></svg>`;
+const HOLD_MS = 1000;
+const TAP_MS = 250;
+const JUST_MS = 60e3;
 const expanded = new Set();
+const falling = new Set();
 
 function pillCard(p, now) {
   const history = lastDoses(p.id, 10);
   const last = history[0];
-  const fresh = !!last && now - last.takenAt < FRESH_MS;
   const open = expanded.has(p.id);
-  const check = el('button', { class: 'check' + (fresh ? ' fresh' : ''), onclick: () => take(p), 'aria-label': `Took ${p.name}` });
-  check.innerHTML = CHECK;
+  const icon = el('span', { class: 'pill-icon' + (falling.has(p.id) ? ' gone' : ''), 'aria-hidden': 'true' });
+  icon.innerHTML = CAPSULE;
+  const row = el('div', {
+    class: 'pill-row', tabindex: '0', role: 'button', 'aria-expanded': String(open),
+    'aria-label': `${p.name}. Hold to log a dose now. Tap for details.`,
+  },
+    el('div', { class: 'sweep' }),
+    el('div', { class: 'pill-info' },
+      el('span', { class: 'pill-name' }, p.name),
+      el('span', { class: 'pill-ago' + (last && now - last.takenAt < JUST_MS ? ' just' : ''), 'data-taken': last ? last.takenAt : '' },
+        last ? ago(last.takenAt, now) : 'Not taken yet')),
+    icon);
+  wireRow(row, p);
   return el('li', { class: 'pill', 'data-id': p.id },
-    el('div', { class: 'pill-row' },
-      el('button', { class: 'pill-info', 'aria-expanded': String(open), onclick: () => toggle(p.id) },
-        el('span', { class: 'pill-name' }, p.name),
-        el('span', { class: 'pill-ago' + (fresh ? ' fresh' : ''), 'data-taken': last ? last.takenAt : '' },
-          last ? ago(last.takenAt, now) : 'Not taken yet')),
-      check),
+    row,
     open ? el('div', { class: 'detail' },
       p.instructions ? el('p', { class: 'pill-instr' }, p.instructions) : null,
       history.length ? el('p', { class: 'label' }, 'Recent') : null,
       history.length ? el('ul', { class: 'history' }, ...history.map((d) =>
         el('li', {}, el('span', {}, stamp(d.takenAt, now)),
-          el('button', { class: 'x-btn', onclick: () => removeDose(d), 'aria-label': 'Remove this entry' }, '×')))) : null,
+          el('button', { class: 'x-btn', onclick: () => removeDose(d), 'aria-label': `Remove ${stamp(d.takenAt, now)}` }, '×')))) : null,
       el('button', { class: 'text-btn', onclick: () => openPillDialog(p) }, 'Edit')) : null);
+}
+
+// The whole row is the target. A quick tap toggles details. A 1s hold logs a dose.
+// Moving the finger more than 10px (scrolling) cancels.
+function wireRow(row, p) {
+  let timer = null, x0 = 0, y0 = 0, tDown = 0, stopRatchet = () => {};
+  const start = (e) => {
+    if (e.button > 0 || timer) return;
+    tDown = performance.now();
+    if (e.clientX != null) { x0 = e.clientX; y0 = e.clientY; }
+    row.classList.remove('release'); row.classList.add('holding');
+    stopRatchet = startRatchet();
+    timer = setTimeout(() => {
+      timer = null;
+      row.classList.remove('holding'); row.classList.add('release');
+      take(p, row.querySelector('.pill-icon'));
+    }, HOLD_MS);
+  };
+  const cancel = () => {
+    if (!timer) return false;
+    clearTimeout(timer); timer = null; stopRatchet();
+    row.classList.remove('holding');
+    return true;
+  };
+  const end = () => {
+    const quick = performance.now() - tDown < TAP_MS;
+    if (cancel() && quick) toggle(p.id);
+  };
+  row.addEventListener('pointerdown', start);
+  row.addEventListener('pointermove', (e) => { if (timer && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) cancel(); });
+  row.addEventListener('pointerup', end);
+  row.addEventListener('pointercancel', cancel);
+  row.addEventListener('pointerleave', cancel);
+  row.addEventListener('contextmenu', (e) => e.preventDefault());
+  row.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); start(e); } });
+  row.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') end(); });
 }
 
 function toggle(id) {
@@ -68,16 +116,31 @@ function toggle(id) {
   render();
 }
 
-async function take(p) {
+// The dose is saved the instant the hold completes, and the haptic says so.
+// The fall that follows is presentation only.
+async function take(p, iconEl) {
   const dose = { id: db.uid(), pillId: p.id, takenAt: Date.now() };
-  await db.putDose(dose);
+  haptic.logged();
   state.doses.push(dose);
-  render();
+  falling.add(p.id);
+  const ago = iconEl.closest('.pill-row').querySelector('.pill-ago');
+  ago.textContent = 'just now'; ago.dataset.taken = dose.takenAt; ago.classList.add('just');
   toast(`Logged ${p.name}`, 'Undo', async () => {
     await db.deleteDose(dose.id);
     state.doses = state.doses.filter((d) => d.id !== dose.id);
     render();
   });
+  try {
+    await db.putDose(dose);
+  } catch (err) {
+    state.doses = state.doses.filter((d) => d.id !== dose.id);
+    toast(`Could not save: ${err.message}`);
+  }
+  await dropPill(iconEl, CAPSULE);
+  falling.delete(p.id);
+  render();
+  const icon = document.querySelector(`.pill[data-id="${p.id}"] .pill-icon`);
+  if (icon) icon.classList.add('back');
 }
 
 async function removeDose(d) {
@@ -94,9 +157,7 @@ function tick() {
     const t = Number(n.dataset.taken);
     if (!t) continue;
     n.textContent = ago(t, now);
-    const fresh = now - t < FRESH_MS;
-    n.classList.toggle('fresh', fresh);
-    n.closest('.pill').querySelector('.check').classList.toggle('fresh', fresh);
+    n.classList.toggle('just', now - t < JUST_MS);
   }
 }
 
@@ -189,6 +250,7 @@ $('#importFile').addEventListener('change', async (e) => {
     if (!confirm(`Import ${data.pills.length} pills and ${data.doses.length} doses? Matching entries are updated. Nothing is deleted.`)) return;
     await db.merge(data);
     await load();
+  renderInstall();
     $('#menuDialog').close();
     toast('Import complete');
   } catch (err) {
@@ -226,6 +288,48 @@ function installHint() {
     : 'Install it: open the browser menu, then Install app or Add to Home screen.';
 }
 
+// ---- Install prompt
+// Installed = running standalone. In a browser tab, show a card. Android gets the real
+// install dialog via beforeinstallprompt; iPhone has no API, so we show the steps.
+// Dismissing hides it for a week, because uninstalled is when iOS may erase data.
+const INSTALL_SNOOZE_MS = 7 * 864e5;
+let deferredInstall = null;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const SHARE_ICON = '<svg class="share" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M6 11H5v10h14V11h-1"/></svg>';
+
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredInstall = e; renderInstall(); });
+window.addEventListener('appinstalled', () => { deferredInstall = null; $('#install').hidden = true; });
+
+async function renderInstall() {
+  const box = $('#install');
+  if (standalone()) { box.hidden = true; return; }
+  const snoozed = await db.getMeta('installSnoozedAt').catch(() => 0);
+  if (snoozed && Date.now() - snoozed < INSTALL_SNOOZE_MS) { box.hidden = true; return; }
+  const dismiss = el('button', { class: 'text-btn', onclick: async () => {
+    box.hidden = true; await db.setMeta('installSnoozedAt', Date.now());
+  } }, 'Not now');
+  const why = el('p', { class: 'why' }, 'Installed, it works offline and your data is safer. Browsers can clear data for sites that are not installed.');
+  if (deferredInstall) {
+    box.replaceChildren(el('p', {}, el('strong', {}, 'Install Pills')), why,
+      el('div', { class: 'row' }, el('button', { class: 'primary', onclick: async () => {
+        const e = deferredInstall; deferredInstall = null;
+        e.prompt();
+        const { outcome } = await e.userChoice;
+        if (outcome === 'accepted') box.hidden = true;
+      } }, 'Install'), dismiss));
+  } else if (isIOS()) {
+    const how = el('p', {});
+    how.innerHTML = `Tap Share ${SHARE_ICON} then <strong>Add to Home Screen</strong>. In Safari, Share may be under the ⋯ button.`;
+    box.replaceChildren(el('p', {}, el('strong', {}, 'Add Pills to your Home Screen')), how, why,
+      el('div', { class: 'row' }, dismiss));
+  } else {
+    box.replaceChildren(el('p', {}, el('strong', {}, 'Install Pills')),
+      el('p', {}, 'Open your browser menu and choose Install app or Add to Home screen.'), why,
+      el('div', { class: 'row' }, dismiss));
+  }
+  box.hidden = false;
+}
+
 // ---- Toast
 let toastTimer;
 function toast(msg, actionLabel, action) {
@@ -243,7 +347,8 @@ async function boot() {
     try { await navigator.storage.persist(); } catch {}
   }
   await load();
-  setInterval(tick, 30e3);
+  renderInstall();
+  setInterval(tick, 15e3);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); renderBackupStatus(); } });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }

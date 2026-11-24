@@ -2,7 +2,7 @@
 // A new deploy is picked up on the launch after the one that downloads it.
 const CACHE = 'pill-tracker-v2';
 const ASSETS = [
-  './', 'index.html', 'styles.css', 'app.js', 'db.js', 'csv.js', 'time.js',
+  './', 'index.html', 'styles.css', 'app.js', 'db.js', 'csv.js', 'time.js', 'swallow.js',
   'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
   'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',
 ];
